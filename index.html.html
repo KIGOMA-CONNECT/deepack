@@ -1,0 +1,943 @@
+<!DOCTYPE html>
+<html lang="sw">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DEEPACK BUSINESS CENTER</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --bg:#F6F3EE;--surface:#FFF;--surface2:#EDE9E2;
+  --border:#DDD8CF;--border2:#C4BEB3;
+  --text:#1C1A17;--text2:#6A645C;--text3:#A39D95;
+  --green:#1E6641;--green-l:#D4EDE0;--green-d:#134428;
+  --amber:#A8540E;--amber-l:#FCEBD4;--amber-d:#6E3408;
+  --red:#B83232;--red-l:#FADBDB;
+  --blue:#16497A;--blue-l:#D4E8F7;--blue-d:#0D2E4F;
+  --radius:10px;--radius-lg:16px;
+  --shadow-lg:0 10px 40px rgba(0,0,0,0.13);
+}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;font-size:15px;}
+#loading{position:fixed;inset:0;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:9999;gap:14px;}
+.spinner{width:36px;height:36px;border:3px solid var(--border2);border-top-color:var(--green-d);border-radius:50%;animation:spin 0.8s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg);}}
+#lmsg{font-size:13px;color:var(--text2);text-align:center;max-width:300px;line-height:1.6;}
+#lerr{font-size:12px;color:var(--red);text-align:center;max-width:300px;margin-top:4px;display:none;line-height:1.5;}
+#lretry{padding:8px 20px;background:var(--green-d);color:#fff;border:none;border-radius:var(--radius);font-family:'DM Sans',sans-serif;font-size:13px;cursor:pointer;display:none;margin-top:4px;}
+#login-screen{display:none;align-items:center;justify-content:center;min-height:100vh;padding:2rem;}
+.login-box{background:var(--surface);border-radius:var(--radius-lg);box-shadow:var(--shadow-lg);padding:2.5rem;width:100%;max-width:400px;}
+.brand{text-align:center;margin-bottom:2rem;}
+.brand h1{font-family:'DM Serif Display',serif;font-size:1.7rem;letter-spacing:-0.5px;line-height:1.2;}
+.brand p{color:var(--text2);font-size:13px;margin-top:5px;}
+.role-tabs{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:1.5rem;}
+.role-btn{padding:10px;border:1.5px solid var(--border);background:transparent;border-radius:var(--radius);cursor:pointer;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;color:var(--text2);transition:all 0.15s;}
+.role-btn.active{border-color:var(--green-d);background:var(--green-l);color:var(--green-d);}
+.fg{margin-bottom:1rem;}
+.fg label{display:block;font-size:11px;font-weight:700;color:var(--text2);margin-bottom:5px;text-transform:uppercase;letter-spacing:0.05em;}
+.fg input,.fg select,.fg textarea{width:100%;padding:10px 14px;border:1.5px solid var(--border);border-radius:var(--radius);font-family:'DM Sans',sans-serif;font-size:14px;color:var(--text);background:var(--surface);outline:none;transition:border-color 0.15s;}
+.fg input:focus,.fg select:focus,.fg textarea:focus{border-color:var(--green-d);}
+.btn-full{width:100%;padding:12px;background:var(--green-d);color:#fff;border:none;border-radius:var(--radius);font-family:'DM Sans',sans-serif;font-size:15px;font-weight:600;cursor:pointer;margin-top:0.5rem;}
+.btn-full:hover{opacity:0.86;}
+.btn-full:disabled{opacity:0.5;cursor:not-allowed;}
+.login-note{margin-top:1rem;padding:10px 14px;background:var(--surface2);border-radius:8px;font-size:12px;color:var(--text2);line-height:1.7;}
+.login-note code{background:var(--border);padding:1px 5px;border-radius:3px;font-family:monospace;}
+#login-err{font-size:13px;color:var(--red);margin-top:8px;min-height:18px;}
+#app{display:none;flex-direction:column;min-height:100vh;}
+header{background:var(--surface);border-bottom:1px solid var(--border);padding:0 1.5rem;display:flex;align-items:center;justify-content:space-between;height:56px;position:sticky;top:0;z-index:100;}
+.h-left{display:flex;align-items:center;gap:10px;}
+.h-logo{font-family:'DM Serif Display',serif;font-size:1.1rem;}
+.role-badge{font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;text-transform:uppercase;letter-spacing:0.05em;}
+.badge-owner{background:var(--amber-l);color:var(--amber-d);}
+.badge-staff{background:var(--blue-l);color:var(--blue-d);}
+.h-right{display:flex;align-items:center;gap:6px;}
+.sync-wrap{display:flex;align-items:center;gap:5px;padding:4px 10px;border-radius:20px;background:var(--surface2);font-size:11px;color:var(--text3);}
+.sync-dot{width:6px;height:6px;border-radius:50%;background:var(--green);}
+.sync-dot.busy{background:var(--amber);animation:pulse 1s infinite;}
+.sync-dot.err{background:var(--red);}
+@keyframes pulse{0%,100%{opacity:1;}50%{opacity:0.3;}}
+.btn-sm{padding:6px 12px;border:1.5px solid var(--border);background:transparent;border-radius:8px;font-size:12px;cursor:pointer;font-family:'DM Sans',sans-serif;color:var(--text2);}
+.btn-sm:hover{background:var(--surface2);}
+.notif-bell{cursor:pointer;font-size:18px;padding:4px 6px;display:none;border-radius:8px;position:relative;}
+.notif-count{position:absolute;top:-1px;right:-1px;background:var(--red);color:#fff;border-radius:50%;width:14px;height:14px;font-size:9px;display:none;align-items:center;justify-content:center;font-weight:700;}
+nav{background:var(--surface);border-bottom:1px solid var(--border);padding:0 1.5rem;display:flex;gap:2px;overflow-x:auto;scrollbar-width:none;}
+nav::-webkit-scrollbar{display:none;}
+.nav-tab{padding:12px 15px;border:none;background:transparent;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;color:var(--text2);cursor:pointer;border-bottom:2.5px solid transparent;white-space:nowrap;transition:all 0.15s;}
+.nav-tab.active{color:var(--green-d);border-bottom-color:var(--green-d);}
+main{flex:1;padding:1.5rem;max-width:1200px;margin:0 auto;width:100%;}
+.page{display:none;}.page.active{display:block;}
+.page-title{font-family:'DM Serif Display',serif;font-size:1.55rem;margin-bottom:1.4rem;}
+.sec-title{font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:0.07em;margin-bottom:10px;}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:1.25rem 1.4rem;margin-bottom:1.25rem;}
+.card-title{font-size:14px;font-weight:600;margin-bottom:1rem;}
+.mg{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:11px;margin-bottom:1.4rem;}
+.mc{background:var(--surface);border-radius:var(--radius);padding:1rem 1.15rem;border:1px solid var(--border);}
+.ml{font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:7px;}
+.mv{font-size:1.4rem;font-weight:600;line-height:1;}
+.ms{font-size:12px;color:var(--text2);margin-top:5px;}
+.biz-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(185px,1fr));gap:11px;margin-bottom:1.4rem;}
+.biz-card{background:var(--surface);border-radius:var(--radius-lg);border:1px solid var(--border);padding:1rem 1.15rem;}
+.biz-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:9px;}
+.biz-icon{width:33px;height:33px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:16px;}
+.pill{font-size:11px;font-weight:700;padding:3px 8px;border-radius:20px;}
+.pill-g{background:var(--green-l);color:var(--green-d);}
+.pill-a{background:var(--amber-l);color:var(--amber-d);}
+.pill-r{background:var(--red-l);color:var(--red);}
+.prog-track{background:var(--surface2);height:5px;border-radius:3px;}
+.prog-fill{height:5px;border-radius:3px;transition:width 0.4s;}
+.alert{padding:9px 13px;border-radius:8px;font-size:13px;margin-bottom:7px;border-left:3px solid;display:flex;gap:8px;align-items:flex-start;line-height:1.5;}
+.alert-a{background:var(--amber-l);border-color:var(--amber);color:var(--amber-d);}
+.alert-r{background:var(--red-l);border-color:var(--red);color:var(--red);}
+.alert-g{background:var(--green-l);border-color:var(--green-d);color:var(--green-d);}
+.fr{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;}
+.fr3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:10px;}
+textarea{height:68px;resize:vertical;}
+.btn-p{padding:10px 22px;background:var(--green-d);color:#fff;border:none;border-radius:var(--radius);font-family:'DM Sans',sans-serif;font-size:14px;font-weight:600;cursor:pointer;}
+.btn-p:disabled{opacity:0.5;cursor:not-allowed;}
+.btn-o{padding:8px 15px;background:transparent;border:1.5px solid var(--border2);color:var(--text2);border-radius:var(--radius);font-family:'DM Sans',sans-serif;font-size:13px;cursor:pointer;}
+.btn-o:hover{background:var(--surface2);}
+.btn-d{padding:8px 16px;background:transparent;border:1.5px solid var(--red);color:var(--red);border-radius:var(--radius);font-family:'DM Sans',sans-serif;font-size:13px;cursor:pointer;}
+.sm{font-size:12px;color:var(--green-d);margin-left:10px;font-weight:600;}
+.fb{display:flex;gap:7px;align-items:center;margin-bottom:1.25rem;flex-wrap:wrap;}
+.fa{border-color:var(--green-d)!important;color:var(--green-d)!important;background:var(--green-l)!important;}
+.tw{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);overflow:hidden;margin-bottom:1.25rem;}
+.ts{overflow-x:auto;}
+table{width:100%;border-collapse:collapse;font-size:13px;}
+th{background:var(--surface2);padding:9px 13px;text-align:left;font-weight:700;font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:0.04em;border-bottom:1px solid var(--border);white-space:nowrap;}
+td{padding:9px 13px;border-bottom:1px solid var(--border);color:var(--text);vertical-align:middle;}
+tr:last-child td{border-bottom:none;}
+tr:hover td{background:var(--bg);}
+.er td{color:var(--text3);text-align:center;padding:22px;}
+.bar-wrap{display:flex;align-items:flex-end;gap:8px;height:105px;margin-bottom:5px;}
+.bar-col{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:3px;}
+.bar-amt{font-size:9px;color:var(--text2);text-align:center;}
+.bar-b{width:80%;border-radius:5px 5px 0 0;min-height:4px;}
+.bar-lr{display:flex;gap:8px;}
+.bar-l{flex:1;font-size:10px;color:var(--text2);text-align:center;line-height:1.4;}
+.gr{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--border);}
+.gr:last-child{border-bottom:none;}
+.gi{font-size:20px;width:30px;text-align:center;}
+.ginfo{flex:1;}
+.gname{font-size:13px;font-weight:600;}
+.gnums{font-size:12px;color:var(--text2);margin-top:1px;}
+.gpct{font-size:13px;font-weight:700;min-width:38px;text-align:right;}
+@media(max-width:640px){.fr,.fr3{grid-template-columns:1fr;}.mg{grid-template-columns:repeat(2,1fr);}header,nav{padding-left:1rem;padding-right:1rem;}main{padding:1rem;}#db{grid-template-columns:1fr!important;}}
+</style>
+</head>
+<body>
+
+<div id="loading">
+  <div class="spinner"></div>
+  <div id="lmsg">Inapakia...</div>
+  <div id="lerr"></div>
+  <button id="lretry" onclick="init()">🔄 Jaribu Tena</button>
+</div>
+
+<div id="login-screen">
+  <div class="login-box">
+    <div class="brand">
+      <h1>DEEPACK BUSINESS CENTER</h1>
+      <p>Mfumo wa Usimamizi — Kigoma</p>
+    </div>
+    <div class="role-tabs">
+      <button class="role-btn active" onclick="selRole('owner',this)">👑 Mmiliki</button>
+      <button class="role-btn" onclick="selRole('staff',this)">👤 Mfanyakazi</button>
+    </div>
+    <div class="fg"><label>Jina lako</label><input type="text" id="ln" placeholder="e.g. Amina, Hassan..." /></div>
+    <div class="fg"><label>Nywila</label><input type="password" id="lp" placeholder="Weka nywila..." onkeydown="if(event.key==='Enter')doLogin()" /></div>
+    <button class="btn-full" id="login-btn" onclick="doLogin()">Ingia →</button>
+    <div class="login-note">
+      <strong>Mmiliki:</strong> Nywila ya awali = <code>mmiliki123</code><br>
+      <strong>Mfanyakazi:</strong> Nywila ya awali = <code>kazi2024</code>
+    </div>
+    <div id="login-err"></div>
+  </div>
+</div>
+
+<div id="app">
+  <header>
+    <div class="h-left">
+      <span class="h-logo">DEEPACK BUSINESS CENTER</span>
+      <span class="role-badge" id="rbadge"></span>
+    </div>
+    <div class="h-right">
+      <div class="sync-wrap">
+        <span class="sync-dot" id="sdot"></span>
+        <span id="stxt">OK</span>
+      </div>
+      <div class="notif-bell" id="nbell" onclick="showNotifs()">🔔<span class="notif-count" id="ncnt"></span></div>
+      <span style="font-size:13px;color:var(--text2);" id="huser"></span>
+      <button class="btn-sm" onclick="loadAll(true)">🔄</button>
+      <button class="btn-sm" onclick="doLogout()">Toka</button>
+    </div>
+  </header>
+  <nav id="mnav"></nav>
+  <main>
+
+    <div class="page active" id="page-rekodi">
+      <div class="page-title">Rekodi Mauzo</div>
+      <div class="card">
+        <div class="card-title">Weka rekodi ya leo</div>
+        <div class="fr">
+          <div class="fg"><label>Biashara</label>
+            <select id="r-biz"><option value="">Chagua biashara...</option><option value="Stationery">✏️ Stationery Services</option><option value="Nguo">👗 Nguo/Mavazi</option><option value="Electronics">📱 Electronics & Accessories</option><option value="Cosmetics">💄 Cosmetics & Dawa</option><option value="Viatu">👟 Viatu</option></select>
+          </div>
+          <div class="fg"><label>Tarehe</label><input type="date" id="r-date"/></div>
+        </div>
+        <div class="fr">
+          <div class="fg"><label>Mauzo (Tsh)</label><input type="number" id="r-mauzo" placeholder="0" min="0"/></div>
+          <div class="fg"><label>Gharama (Tsh)</label><input type="number" id="r-gharama" placeholder="0" min="0"/></div>
+        </div>
+        <div class="fr">
+          <div class="fg"><label>Wateja</label><input type="number" id="r-wateja" placeholder="0" min="0"/></div>
+          <div class="fg"><label>Bidhaa iliyouzwa zaidi</label><input type="text" id="r-bidhaa" placeholder="e.g. A4 Paper..."/></div>
+        </div>
+        <div class="fg"><label>Maelezo</label><textarea id="r-notes" placeholder="Tatizo lolote..."></textarea></div>
+        <button class="btn-p" id="r-btn" onclick="saveRekodi()">Hifadhi Rekodi</button>
+        <span class="sm" id="r-msg"></span>
+      </div>
+      <div class="tw"><div class="ts">
+        <table><thead><tr><th>Tarehe</th><th>Biashara</th><th>Mauzo</th><th>Gharama</th><th>Faida</th><th>Wateja</th><th>Bidhaa</th><th>Mtumiaji</th></tr></thead>
+        <tbody id="r-tbody"></tbody></table>
+      </div></div>
+    </div>
+
+    <div class="page" id="page-bidhaa">
+      <div class="page-title">Hesabu ya Bidhaa</div>
+      <div class="card">
+        <div class="card-title">Weka / Sasisha bidhaa</div>
+        <div class="fr">
+          <div class="fg"><label>Biashara</label>
+            <select id="b-biz"><option value="">Chagua...</option><option value="Stationery">✏️ Stationery</option><option value="Nguo">👗 Nguo/Mavazi</option><option value="Electronics">📱 Electronics</option><option value="Cosmetics">💄 Cosmetics & Dawa</option><option value="Viatu">👟 Viatu</option></select>
+          </div>
+          <div class="fg"><label>Jina la bidhaa</label><input type="text" id="b-jina" placeholder="e.g. A4 Paper ream"/></div>
+        </div>
+        <div class="fr3">
+          <div class="fg"><label>Idadi iliyobaki</label><input type="number" id="b-idadi" placeholder="0" min="0"/></div>
+          <div class="fg"><label>Kiwango cha chini</label><input type="number" id="b-kiwango" placeholder="5" min="0"/></div>
+          <div class="fg"><label>Bei ya ununuzi (Tsh)</label><input type="number" id="b-bei" placeholder="0" min="0"/></div>
+        </div>
+        <button class="btn-p" id="b-btn" onclick="saveBidhaa()">Hifadhi Bidhaa</button>
+        <span class="sm" id="b-msg"></span>
+      </div>
+      <div class="tw"><div class="ts">
+        <table><thead><tr><th>Bidhaa</th><th>Biashara</th><th>Idadi</th><th>Kiwango</th><th>Bei</th><th>Thamani</th><th>Hali</th></tr></thead>
+        <tbody id="b-tbody"></tbody></table>
+      </div></div>
+    </div>
+
+    <div class="page" id="page-mkopo">
+      <div class="page-title">Madeni / Mkopo</div>
+      <div class="card">
+        <div class="card-title">Weka mkopo mpya</div>
+        <div class="fr">
+          <div class="fg"><label>Biashara</label>
+            <select id="mk-biz"><option value="">Chagua...</option><option value="Stationery">✏️ Stationery</option><option value="Nguo">👗 Nguo/Mavazi</option><option value="Electronics">📱 Electronics</option><option value="Cosmetics">💄 Cosmetics & Dawa</option><option value="Viatu">👟 Viatu</option></select>
+          </div>
+          <div class="fg"><label>Jina la Mteja</label><input type="text" id="mk-mteja" placeholder="e.g. Hassan Juma..."/></div>
+        </div>
+        <div class="fr">
+          <div class="fg"><label>Kiasi (Tsh)</label><input type="number" id="mk-kiasi" placeholder="0" min="0"/></div>
+          <div class="fg"><label>Tarehe ya Mkopo</label><input type="date" id="mk-tarehe"/></div>
+        </div>
+        <div class="fr">
+          <div class="fg"><label>Tarehe ya Kulipa</label><input type="date" id="mk-due"/></div>
+          <div class="fg"><label>Simu (hiari)</label><input type="text" id="mk-simu" placeholder="0712..."/></div>
+        </div>
+        <div class="fg"><label>Maelezo</label><textarea id="mk-notes" placeholder="Bidhaa alizochukua..."></textarea></div>
+        <button class="btn-p" id="mk-btn" onclick="saveMkopo()">Hifadhi Mkopo</button>
+        <span class="sm" id="mk-msg"></span>
+      </div>
+      <div class="mg" id="mk-metrics"></div>
+      <div class="fb">
+        <button class="btn-o fa" onclick="setMF('wote',this)">Wote</button>
+        <button class="btn-o" onclick="setMF('hajalipa',this)">Hajalipa</button>
+        <button class="btn-o" onclick="setMF('amelipa',this)">Amelipa</button>
+        <button class="btn-o" onclick="setMF('sehemu',this)">Amelipa Sehemu</button>
+      </div>
+      <div class="tw"><div class="ts">
+        <table><thead><tr><th>Mteja</th><th>Biashara</th><th>Kiasi</th><th>Alipolipa</th><th>Baki</th><th>Tarehe</th><th>Kulipa</th><th>Hali</th><th>Lipa</th></tr></thead>
+        <tbody id="mk-tbody"></tbody></table>
+      </div></div>
+    </div>
+
+    <div class="page" id="page-dash">
+      <div class="page-title">Dashibodi</div>
+      <div class="fb">
+        <span style="font-size:12px;color:var(--text2);">Kipindi:</span>
+        <button class="btn-o fa" onclick="setF('leo',this)">Leo</button>
+        <button class="btn-o" onclick="setF('wiki',this)">Wiki hii</button>
+        <button class="btn-o" onclick="setF('mwezi',this)">Mwezi huu</button>
+        <button class="btn-o" onclick="setF('yote',this)">Yote</button>
+        <button class="btn-o" onclick="loadAll(true)" style="margin-left:auto;">🔄 Refresh</button>
+      </div>
+      <div class="mg" id="d-met"></div>
+      <div class="sec-title">Hali ya biashara zote</div>
+      <div class="biz-grid" id="d-biz"></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.25rem;" id="db">
+        <div class="card"><div class="card-title">Mauzo kwa biashara</div><div class="bar-wrap" id="d-bar"></div><div class="bar-lr" id="d-lbl"></div></div>
+        <div class="card"><div class="card-title">Arifa muhimu</div><div id="d-alerts"></div></div>
+      </div>
+    </div>
+
+    <div class="page" id="page-ripoti">
+      <div class="page-title">Ripoti za Kina</div>
+      <div style="display:flex;gap:10px;margin-bottom:1.25rem;flex-wrap:wrap;align-items:flex-end;">
+        <div class="fg" style="margin:0;"><label>Kutoka</label><input type="date" id="rp-from" style="width:auto;"/></div>
+        <div class="fg" style="margin:0;"><label>Hadi</label><input type="date" id="rp-to" style="width:auto;"/></div>
+        <button class="btn-p" onclick="renderRipoti()">Toa Ripoti</button>
+        <button class="btn-o" onclick="window.print()">🖨️ Chapisha</button>
+      </div>
+      <div id="rp-out"></div>
+    </div>
+
+    <div class="page" id="page-malengo">
+      <div class="page-title">Malengo ya Mwezi</div>
+      <div class="card">
+        <div class="card-title">Weka lengo jipya</div>
+        <div class="fr">
+          <div class="fg"><label>Biashara</label>
+            <select id="m-biz"><option value="">Chagua...</option><option value="Stationery">✏️ Stationery</option><option value="Nguo">👗 Nguo/Mavazi</option><option value="Electronics">📱 Electronics</option><option value="Cosmetics">💄 Cosmetics & Dawa</option><option value="Viatu">👟 Viatu</option></select>
+          </div>
+          <div class="fg"><label>Lengo (Tsh/mwezi)</label><input type="number" id="m-lengo" placeholder="e.g. 500000" min="0"/></div>
+        </div>
+        <button class="btn-p" id="m-btn" onclick="saveGoal()">Hifadhi Lengo</button>
+        <span class="sm" id="m-msg"></span>
+      </div>
+      <div class="card" style="padding-bottom:0.5rem;"><div class="card-title">Maendeleo — Mwezi huu</div><div id="m-list"></div></div>
+    </div>
+
+    <div class="page" id="page-settings">
+      <div class="page-title">Mipangilio</div>
+      <div class="card">
+        <div class="card-title">Badilisha nywila</div>
+        <div class="fr">
+          <div class="fg"><label>Nywila mpya ya Mmiliki</label><input type="password" id="s-owner" placeholder="Nywila mpya..."/></div>
+          <div class="fg"><label>Nywila mpya ya Mfanyakazi</label><input type="password" id="s-staff" placeholder="Nywila mpya..."/></div>
+        </div>
+        <button class="btn-p" onclick="savePwd()">Hifadhi Nywila</button>
+        <span class="sm" id="s-msg"></span>
+      </div>
+      <div class="card">
+        <div class="card-title" style="color:var(--red);">Hatari: Futa Data Yote</div>
+        <p style="font-size:13px;color:var(--text2);margin-bottom:12px;">Itafuta rekodi ZOTE kwenye Google Sheets.</p>
+        <button class="btn-d" onclick="clearAll()">Futa Data Yote</button>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<script>
+'use strict';
+// ============================================================
+//  CONFIG — Google Sheets API moja kwa moja
+// ============================================================
+var API_KEY = 'AIzaSyDW8rSJ5rxTSEBVYiJYSVlU6hW6rvSPfl4';
+var SHEET_ID = '1o61OFXaNh31mqlKAEObniiWGbJQNyxqswLZdttarRyo';
+var BASE = 'https://sheets.googleapis.com/v4/spreadsheets/'+SHEET_ID;
+
+// ============================================================
+//  CONSTANTS
+// ============================================================
+var BIZ=['Stationery','Nguo','Electronics','Cosmetics','Viatu'];
+var IC={Stationery:'✏️',Nguo:'👗',Electronics:'📱',Cosmetics:'💄',Viatu:'👟'};
+var CL={Stationery:'#16497A',Nguo:'#1E6641',Electronics:'#6C3483',Cosmetics:'#933356',Viatu:'#A8540E'};
+var SHEETS_HEADERS = {
+  Rekodi:   ['ID','Tarehe','Biashara','Mauzo','Gharama','Wateja','Bidhaa','Maelezo','Mtumiaji','Timestamp'],
+  Bidhaa:   ['Biashara','Jina','Idadi','Kiwango','Bei','IliSasishwa','NaSasishwa'],
+  Malengo:  ['Biashara','Lengo'],
+  Mkopo:    ['ID','Biashara','Mteja','Kiasi','Alipolipa','Tarehe','Malipo','Simu','Hali','Maelezo','Mtumiaji','Timestamp'],
+  Settings: ['Key','Value']
+};
+
+// ============================================================
+//  STATE
+// ============================================================
+var C = {rekodi:[],bidhaa:[],malengo:{},mkopo:[],passwords:{owner:'mmiliki123',staff:'kazi2024'}};
+var currentUser = null;
+var activeFilter = 'leo';
+var mkopoFilter = 'wote';
+var refreshTimer = null;
+var SESS_KEY = 'dbc_final_v1';
+var CACHE_KEY = 'dbc_cache_v1';
+
+// ============================================================
+//  HELPERS
+// ============================================================
+function fmt(n){return 'Tsh '+Math.round(n||0).toLocaleString();}
+function today(){return new Date().toISOString().split('T')[0];}
+function setMsg(id,txt){var e=document.getElementById(id);if(e){e.textContent=txt;setTimeout(function(){e.textContent='';},3500);}}
+function setBtn(id,dis){var b=document.getElementById(id);if(b)b.disabled=dis;}
+function setLMsg(m){var e=document.getElementById('lmsg');if(e)e.textContent=m;}
+function sync(s,m){
+  var d=document.getElementById('sdot'),t=document.getElementById('stxt');
+  if(d)d.className='sync-dot'+(s==='busy'?' busy':s==='err'?' err':'');
+  if(t)t.textContent=m||'OK';
+}
+function saveLocalCache(){
+  try{localStorage.setItem(CACHE_KEY,JSON.stringify({r:C.rekodi,b:C.bidhaa,m:C.malengo,k:C.mkopo,p:C.passwords,ts:Date.now()}));}catch(e){}
+}
+function loadLocalCache(){
+  try{
+    var d=JSON.parse(localStorage.getItem(CACHE_KEY)||'null');
+    if(!d)return false;
+    if(d.r&&d.r.length)C.rekodi=d.r;
+    if(d.b&&d.b.length)C.bidhaa=d.b;
+    if(d.m&&Object.keys(d.m).length)C.malengo=d.m;
+    if(d.k&&d.k.length)C.mkopo=d.k;
+    if(d.p)C.passwords=d.p;
+    return true;
+  }catch(e){return false;}
+}
+
+// ============================================================
+//  GOOGLE SHEETS API
+// ============================================================
+function sheetsGet(range){
+  return fetch(BASE+'/values/'+encodeURIComponent(range)+'?key='+API_KEY)
+    .then(function(r){return r.json();})
+    .then(function(d){
+      if(d.error)throw new Error(d.error.message);
+      return d.values||[];
+    });
+}
+
+function sheetsAppend(sheetName, row){
+  return fetch(BASE+'/values/'+encodeURIComponent(sheetName+'!A1')+':append?valueInputOption=RAW&insertDataOption=INSERT_ROWS&key='+API_KEY,{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({values:[row]})
+  }).then(function(r){return r.json();}).then(function(d){
+    if(d.error)throw new Error(d.error.message);
+    return d;
+  });
+}
+
+function sheetsUpdate(range, values){
+  return fetch(BASE+'/values/'+encodeURIComponent(range)+'?valueInputOption=RAW&key='+API_KEY,{
+    method:'PUT',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({values:values})
+  }).then(function(r){return r.json();}).then(function(d){
+    if(d.error)throw new Error(d.error.message);
+    return d;
+  });
+}
+
+function sheetsGetAll(){
+  var ranges=['Rekodi!A:J','Bidhaa!A:G','Malengo!A:B','Mkopo!A:L','Settings!A:B'];
+  return fetch(BASE+'/values:batchGet?'+ranges.map(function(r){return'ranges='+encodeURIComponent(r);}).join('&')+'&key='+API_KEY)
+    .then(function(r){return r.json();})
+    .then(function(d){
+      if(d.error)throw new Error(d.error.message);
+      return d.valueRanges;
+    });
+}
+
+function rowsToObjects(rows){
+  if(!rows||rows.length<=1)return[];
+  var headers=rows[0];
+  return rows.slice(1).map(function(row){
+    var obj={};
+    headers.forEach(function(h,i){obj[String(h)]=row[i]!==undefined?row[i]:'';});
+    return obj;
+  }).filter(function(r){return Object.values(r).some(function(v){return v!=='';});});
+}
+
+// ============================================================
+//  ENSURE SHEETS EXIST
+// ============================================================
+function ensureSheets(){
+  // Check if Settings sheet has passwords, if not create via batch update
+  return sheetsGet('Settings!A:B').then(function(rows){
+    if(!rows||rows.length<=1){
+      // Sheet exists but empty — add headers and defaults
+      return sheetsUpdate('Settings!A1',
+        [['Key','Value'],['owner_pass','mmiliki123'],['staff_pass','kazi2024']]
+      );
+    }
+  }).catch(function(){
+    // Sheet might not exist — we'll handle gracefully
+  });
+}
+
+// ============================================================
+//  INIT
+// ============================================================
+function init(){
+  document.getElementById('loading').style.display='flex';
+  document.getElementById('lerr').style.display='none';
+  document.getElementById('lretry').style.display='none';
+  setLMsg('Inaunganisha na Google Sheets...');
+
+  var hasCached = loadLocalCache();
+
+  ensureSheets().then(function(){
+    return loadAll(false);
+  }).then(function(){
+    var sess=null;
+    try{sess=JSON.parse(localStorage.getItem(SESS_KEY)||'null');}catch(e){}
+    document.getElementById('loading').style.display='none';
+    if(sess&&sess.name&&sess.role){
+      currentUser=sess;
+      startApp();
+    } else {
+      document.getElementById('login-screen').style.display='flex';
+    }
+  }).catch(function(e){
+    if(hasCached){
+      // Use cached data
+      setLMsg('Kutumia data iliyohifadhiwa (offline)...');
+      setTimeout(function(){
+        document.getElementById('loading').style.display='none';
+        var sess=null;
+        try{sess=JSON.parse(localStorage.getItem(SESS_KEY)||'null');}catch(e2){}
+        if(sess&&sess.name&&sess.role){currentUser=sess;startApp();}
+        else document.getElementById('login-screen').style.display='flex';
+      },1000);
+    } else {
+      document.getElementById('lerr').style.display='block';
+      document.getElementById('lretry').style.display='block';
+      document.getElementById('lerr').textContent='Hitilafu: '+e.message;
+      setLMsg('Imeshindwa kuunganika.');
+    }
+  });
+}
+
+// ============================================================
+//  LOAD ALL
+// ============================================================
+function loadAll(showMsg){
+  if(showMsg)sync('busy','Inapakia...');
+  return sheetsGetAll().then(function(ranges){
+    var rekodi=rowsToObjects(ranges[0]&&ranges[0].values);
+    var bidhaa=rowsToObjects(ranges[1]&&ranges[1].values);
+    var malengoRows=rowsToObjects(ranges[2]&&ranges[2].values);
+    var mkopo=rowsToObjects(ranges[3]&&ranges[3].values);
+    var settingsRows=rowsToObjects(ranges[4]&&ranges[4].values);
+
+    // Only update if server returned data
+    if(rekodi.length>0||C.rekodi.length===0) C.rekodi=rekodi.reverse();
+    if(bidhaa.length>0||C.bidhaa.length===0) C.bidhaa=bidhaa;
+    if(mkopo.length>0||C.mkopo.length===0) C.mkopo=mkopo.reverse();
+
+    var mal={};
+    malengoRows.forEach(function(r){if(r.Biashara)mal[r.Biashara]=Number(r.Lengo||0);});
+    if(Object.keys(mal).length>0||Object.keys(C.malengo).length===0) C.malengo=mal;
+
+    var pwd={owner:'mmiliki123',staff:'kazi2024'};
+    settingsRows.forEach(function(r){if(r.Key==='owner_pass')pwd.owner=r.Value;if(r.Key==='staff_pass')pwd.staff=r.Value;});
+    C.passwords=pwd;
+
+    saveLocalCache();
+    if(showMsg)sync('','Imesasishwa ✓');
+    refreshCurrentPage();
+    checkNotifs();
+  }).catch(function(e){
+    sync('err','Hitilafu ya mtandao');
+    console.error('loadAll error:',e.message);
+    // Keep existing cache — never clear
+    throw e;
+  });
+}
+
+// ============================================================
+//  AUTH
+// ============================================================
+var selR='owner';
+function selRole(r,el){selR=r;document.querySelectorAll('.role-btn').forEach(function(b){b.classList.remove('active');});el.classList.add('active');}
+
+function doLogin(){
+  var name=document.getElementById('ln').value.trim();
+  var pass=document.getElementById('lp').value;
+  var err=document.getElementById('login-err');
+  err.style.cssText='color:var(--red);font-size:13px;margin-top:8px;';
+  if(!name){err.textContent='Weka jina lako.';return;}
+  if(selR==='owner'&&pass!==C.passwords.owner){err.textContent='Nywila ya mmiliki si sahihi.';return;}
+  if(selR==='staff'&&pass!==C.passwords.staff){err.textContent='Nywila ya mfanyakazi si sahihi.';return;}
+  err.textContent='';
+  currentUser={name:name,role:selR};
+  try{localStorage.setItem(SESS_KEY,JSON.stringify(currentUser));}catch(e){}
+  document.getElementById('login-screen').style.display='none';
+  startApp();
+}
+
+function doLogout(){
+  currentUser=null;
+  try{localStorage.removeItem(SESS_KEY);}catch(e){}
+  if(refreshTimer)clearInterval(refreshTimer);
+  document.getElementById('app').style.display='none';
+  document.getElementById('login-screen').style.display='flex';
+  document.getElementById('lp').value='';
+}
+
+// ============================================================
+//  START APP
+// ============================================================
+function startApp(){
+  document.getElementById('app').style.display='flex';
+  document.getElementById('huser').textContent=currentUser.name;
+  var rb=document.getElementById('rbadge');
+  rb.textContent=currentUser.role==='owner'?'👑 Mmiliki':'👤 Mfanyakazi';
+  rb.className='role-badge '+(currentUser.role==='owner'?'badge-owner':'badge-staff');
+  buildNav();
+  document.getElementById('r-date').value=today();
+  document.getElementById('mk-tarehe').value=today();
+  var rpf=document.getElementById('rp-from'),rpt=document.getElementById('rp-to');
+  if(rpf){var d=new Date();rpf.value=new Date(d.getFullYear(),d.getMonth(),1).toISOString().split('T')[0];rpt.value=today();}
+  showPage('rekodi');
+  sync('','Imehifadhiwa');
+  checkNotifs();
+  if(refreshTimer)clearInterval(refreshTimer);
+  refreshTimer=setInterval(function(){loadAll(false);},180000);
+}
+
+function buildNav(){
+  var isO=currentUser.role==='owner';
+  var tabs=[
+    {id:'rekodi',lbl:'📝 Rekodi Mauzo',show:true},
+    {id:'bidhaa',lbl:'📦 Hesabu Bidhaa',show:true},
+    {id:'mkopo',lbl:'💳 Madeni/Mkopo',show:true},
+    {id:'dash',lbl:'📊 Dashibodi',show:isO},
+    {id:'ripoti',lbl:'📈 Ripoti',show:isO},
+    {id:'malengo',lbl:'🎯 Malengo',show:isO},
+    {id:'settings',lbl:'⚙️ Mipangilio',show:isO},
+  ];
+  document.getElementById('mnav').innerHTML=tabs.filter(function(t){return t.show;})
+    .map(function(t){return '<button class="nav-tab" data-p="'+t.id+'" onclick="showPage(\''+t.id+'\')">'+t.lbl+'</button>';}).join('');
+}
+
+function showPage(id){
+  document.querySelectorAll('.page').forEach(function(p){p.classList.remove('active');});
+  document.querySelectorAll('.nav-tab').forEach(function(t){t.classList.remove('active');});
+  var pg=document.getElementById('page-'+id);if(pg)pg.classList.add('active');
+  var btn=document.querySelector('[data-p="'+id+'"]');if(btn)btn.classList.add('active');
+  refreshCurrentPage();
+}
+
+function refreshCurrentPage(){
+  var ap=document.querySelector('.page.active');if(!ap)return;
+  var id=ap.id.replace('page-','');
+  if(id==='rekodi')renderRekodi();
+  if(id==='bidhaa')renderBidhaa();
+  if(id==='mkopo')renderMkopo();
+  if(id==='dash')renderDash();
+  if(id==='malengo')renderMalengo();
+}
+
+// ============================================================
+//  REKODI
+// ============================================================
+function saveRekodi(){
+  var biz=document.getElementById('r-biz').value;
+  var date=document.getElementById('r-date').value;
+  var mauzo=parseFloat(document.getElementById('r-mauzo').value)||0;
+  var gharama=parseFloat(document.getElementById('r-gharama').value)||0;
+  var wateja=parseInt(document.getElementById('r-wateja').value)||0;
+  var bidhaa=document.getElementById('r-bidhaa').value.trim();
+  var notes=document.getElementById('r-notes').value.trim();
+  if(!biz){alert('Chagua biashara kwanza.');return;}
+  if(!mauzo){alert('Weka kiasi cha mauzo.');return;}
+  var id=String(Date.now());
+  setBtn('r-btn',true);sync('busy','Inahifadhi...');
+  sheetsAppend('Rekodi',[id,date,biz,mauzo,gharama,wateja,bidhaa,notes,currentUser.name,new Date().toISOString()])
+  .then(function(){
+    C.rekodi.unshift({ID:id,Tarehe:date,Biashara:biz,Mauzo:mauzo,Gharama:gharama,Wateja:wateja,Bidhaa:bidhaa,Maelezo:notes,Mtumiaji:currentUser.name});
+    saveLocalCache();renderRekodi();
+    ['r-biz','r-mauzo','r-gharama','r-wateja','r-bidhaa','r-notes'].forEach(function(i){document.getElementById(i).value='';});
+    document.getElementById('r-date').value=today();
+    setMsg('r-msg','✓ Imehifadhiwa kwenye Google Sheets!');sync('','Imehifadhiwa');
+  }).catch(function(e){sync('err','Hitilafu!');alert('Hitilafu: '+e.message);})
+  .finally(function(){setBtn('r-btn',false);});
+}
+
+function renderRekodi(){
+  var tb=document.getElementById('r-tbody');
+  if(!C.rekodi.length){tb.innerHTML='<tr class="er"><td colspan="8">Hakuna rekodi bado.</td></tr>';return;}
+  tb.innerHTML=C.rekodi.slice(0,50).map(function(r){
+    var m=Number(r.Mauzo||0),g=Number(r.Gharama||0),f=m-g,biz=String(r.Biashara||'');
+    return'<tr><td>'+String(r.Tarehe||'')+'</td><td>'+(IC[biz]||'')+' '+biz+'</td>'
+      +'<td style="font-weight:600;">'+fmt(m)+'</td><td>'+fmt(g)+'</td>'
+      +'<td style="font-weight:600;color:'+(f>=0?'var(--green-d)':'var(--red)')+'">'+fmt(f)+'</td>'
+      +'<td>'+(r.Wateja||'—')+'</td><td style="font-size:12px;color:var(--text2);">'+(r.Bidhaa||'—')+'</td>'
+      +'<td style="font-size:12px;color:var(--text3);">'+(r.Mtumiaji||'—')+'</td></tr>';
+  }).join('');
+}
+
+// ============================================================
+//  BIDHAA
+// ============================================================
+function saveBidhaa(){
+  var biz=document.getElementById('b-biz').value,jina=document.getElementById('b-jina').value.trim();
+  var idadi=parseInt(document.getElementById('b-idadi').value)||0;
+  var kiwango=parseInt(document.getElementById('b-kiwango').value)||5;
+  var bei=parseFloat(document.getElementById('b-bei').value)||0;
+  if(!biz||!jina){alert('Jaza biashara na jina.');return;}
+  setBtn('b-btn',true);sync('busy','Inahifadhi...');
+  // Check if exists
+  var existIdx=-1;
+  C.bidhaa.forEach(function(b,i){if(String(b.Biashara)===biz&&String(b.Jina||'').toLowerCase()===jina.toLowerCase())existIdx=i;});
+  var row=[biz,jina,idadi,kiwango,bei,today(),currentUser.name];
+  var item={Biashara:biz,Jina:jina,Idadi:idadi,Kiwango:kiwango,Bei:bei,IliSasishwa:today()};
+  sheetsAppend('Bidhaa',row).then(function(){
+    if(existIdx>=0)C.bidhaa[existIdx]=item;else C.bidhaa.unshift(item);
+    saveLocalCache();renderBidhaa();
+    ['b-biz','b-jina','b-idadi','b-bei'].forEach(function(i){document.getElementById(i).value='';});
+    setMsg('b-msg','✓ Imehifadhiwa!');sync('','Imehifadhiwa');
+  }).catch(function(e){sync('err','Hitilafu!');alert('Hitilafu: '+e.message);})
+  .finally(function(){setBtn('b-btn',false);});
+}
+
+function renderBidhaa(){
+  var tb=document.getElementById('b-tbody');
+  if(!C.bidhaa.length){tb.innerHTML='<tr class="er"><td colspan="7">Hakuna bidhaa bado.</td></tr>';return;}
+  tb.innerHTML=C.bidhaa.map(function(b){
+    var i=Number(b.Idadi||0),k=Number(b.Kiwango||5),bei=Number(b.Bei||0);
+    var biz=String(b.Biashara||''),jina=String(b.Jina||'');
+    var ok=i>k,warn=i>0&&i<=k;
+    return'<tr><td style="font-weight:500;">'+jina+'</td><td>'+(IC[biz]||'')+' '+biz+'</td>'
+      +'<td style="font-weight:600;">'+i+'</td><td>'+k+'</td>'
+      +'<td>'+(bei?fmt(bei):'—')+'</td><td>'+(bei&&i?fmt(bei*i):'—')+'</td>'
+      +'<td><span class="pill '+(ok?'pill-g':warn?'pill-a':'pill-r')+'">'+(ok?'Ipo':warn?'Pungufu':'Imekwisha!')+'</span></td></tr>';
+  }).join('');
+}
+
+// ============================================================
+//  MKOPO
+// ============================================================
+function setMF(f,el){mkopoFilter=f;document.querySelectorAll('#page-mkopo .btn-o').forEach(function(b){b.classList.remove('fa');});el.classList.add('fa');renderMkopo();}
+
+function saveMkopo(){
+  var biz=document.getElementById('mk-biz').value,mteja=document.getElementById('mk-mteja').value.trim();
+  var kiasi=parseFloat(document.getElementById('mk-kiasi').value)||0;
+  var tarehe=document.getElementById('mk-tarehe').value,due=document.getElementById('mk-due').value;
+  var simu=document.getElementById('mk-simu').value.trim(),notes=document.getElementById('mk-notes').value.trim();
+  if(!biz||!mteja){alert('Weka biashara na jina la mteja.');return;}
+  if(!kiasi){alert('Weka kiasi cha mkopo.');return;}
+  var id=String(Date.now());
+  setBtn('mk-btn',true);sync('busy','Inahifadhi...');
+  sheetsAppend('Mkopo',[id,biz,mteja,kiasi,0,tarehe||today(),due||'',simu,notes,'Hajalipa',currentUser.name,new Date().toISOString()])
+  .then(function(){
+    C.mkopo.unshift({ID:id,Biashara:biz,Mteja:mteja,Kiasi:kiasi,Alipolipa:0,Tarehe:tarehe||today(),Malipo:due||'',Simu:simu,Hali:'Hajalipa',Maelezo:notes,Mtumiaji:currentUser.name});
+    saveLocalCache();renderMkopo();
+    ['mk-biz','mk-mteja','mk-kiasi','mk-simu','mk-notes'].forEach(function(i){document.getElementById(i).value='';});
+    document.getElementById('mk-tarehe').value=today();document.getElementById('mk-due').value='';
+    setMsg('mk-msg','✓ Mkopo umehifadhiwa!');sync('','Imehifadhiwa');
+  }).catch(function(e){sync('err','Hitilafu!');alert('Hitilafu ya kuhifadhi mkopo: '+e.message);})
+  .finally(function(){setBtn('mk-btn',false);});
+}
+
+function lipaMkopo(id){
+  var kiasi=prompt('Weka kiasi alicholipa (Tsh):');
+  if(!kiasi||isNaN(Number(kiasi)))return;
+  var mk=null,mkIdx=-1;
+  C.mkopo.forEach(function(m,i){if(String(m.ID)===String(id)){mk=m;mkIdx=i;}});
+  if(!mk){alert('Mkopo haukupatikana.');return;}
+  var alip=Number(mk.Alipolipa||0)+Number(kiasi);
+  var total=Number(mk.Kiasi||0);
+  var hali=alip>=total?'Amelipa':'Amelipa Sehemu';
+  sync('busy','Inahifadhi...');
+  // Find row in sheet and update
+  sheetsGet('Mkopo!A:A').then(function(rows){
+    var rowNum=-1;
+    rows.forEach(function(row,i){if(i>0&&row[0]===String(id))rowNum=i+1;});
+    if(rowNum<0)throw new Error('Row haikupatikana');
+    return sheetsUpdate('Mkopo!E'+rowNum+':I'+rowNum,[[alip,'','','',hali]]);
+  }).then(function(){
+    if(mkIdx>=0){C.mkopo[mkIdx].Alipolipa=alip;C.mkopo[mkIdx].Hali=hali;}
+    saveLocalCache();renderMkopo();sync('','Imehifadhiwa');
+    setMsg('mk-msg','✓ Malipo yamehifadhiwa!');
+  }).catch(function(e){sync('err','Hitilafu!');alert('Hitilafu: '+e.message);});
+}
+
+function renderMkopo(){
+  var all=C.mkopo||[],N=function(v){return Number(v||0);};
+  var jumla=all.reduce(function(s,m){return s+N(m.Kiasi);},0);
+  var amelipa=all.reduce(function(s,m){return s+N(m.Alipolipa);},0);
+  var hjp=all.filter(function(m){return String(m.Hali)==='Hajalipa';}).length;
+  var mm=document.getElementById('mk-metrics');
+  if(mm)mm.innerHTML='<div class="mc"><div class="ml">Jumla Madeni</div><div class="mv" style="color:var(--red)">'+fmt(jumla)+'</div></div>'
+    +'<div class="mc"><div class="ml">Wamepokea</div><div class="mv" style="color:var(--green-d)">'+fmt(amelipa)+'</div></div>'
+    +'<div class="mc"><div class="ml">Bado Wanalipa</div><div class="mv" style="color:var(--amber)">'+fmt(jumla-amelipa)+'</div></div>'
+    +'<div class="mc"><div class="ml">Hawajalipa</div><div class="mv" style="color:var(--red)">'+hjp+'</div></div>';
+  var filtered=all;
+  if(mkopoFilter==='hajalipa')filtered=all.filter(function(m){return String(m.Hali)==='Hajalipa';});
+  if(mkopoFilter==='amelipa')filtered=all.filter(function(m){return String(m.Hali)==='Amelipa';});
+  if(mkopoFilter==='sehemu')filtered=all.filter(function(m){return String(m.Hali)==='Amelipa Sehemu';});
+  var tb=document.getElementById('mk-tbody');
+  if(!filtered.length){tb.innerHTML='<tr class="er"><td colspan="9">Hakuna madeni ya aina hii.</td></tr>';return;}
+  var t=today();
+  tb.innerHTML=filtered.map(function(m){
+    var kiasi=N(m.Kiasi),alip=N(m.Alipolipa),bk=kiasi-alip;
+    var hali=String(m.Hali||'Hajalipa'),due=String(m.Malipo||''),ov=due&&due<t&&hali!=='Amelipa';
+    var hcls=hali==='Amelipa'?'pill-g':hali==='Amelipa Sehemu'?'pill-a':'pill-r';
+    var id=String(m.ID||''),biz=String(m.Biashara||'');
+    return'<tr style="'+(ov?'background:#FFF5F5;':'')+'">'
+      +'<td><strong>'+(m.Mteja||'—')+'</strong>'+(m.Simu?'<br><span style="font-size:11px;color:var(--text3);">📞 '+m.Simu+'</span>':'')+'</td>'
+      +'<td>'+(IC[biz]||'')+' '+biz+'</td>'
+      +'<td style="font-weight:600;">'+fmt(kiasi)+'</td>'
+      +'<td style="color:var(--green-d)">'+fmt(alip)+'</td>'
+      +'<td style="font-weight:600;color:'+(bk>0?'var(--red)':'var(--green-d)')+'">'+fmt(bk)+'</td>'
+      +'<td style="font-size:12px;">'+(m.Tarehe||'—')+'</td>'
+      +'<td style="font-size:12px;color:'+(ov?'var(--red)':'var(--text2)')+';">'+(due||'—')+(ov?' ⚠':'')+'</td>'
+      +'<td><span class="pill '+hcls+'">'+hali+'</span></td>'
+      +'<td>'+(hali!=='Amelipa'?'<button class="btn-o" style="font-size:11px;padding:4px 8px;" onclick="lipaMkopo(\''+id+'\')">Lipa</button>':'✓')+'</td>'
+      +'</tr>';
+  }).join('');
+}
+
+// ============================================================
+//  DASHIBODI
+// ============================================================
+function getRecs(){
+  var all=C.rekodi,t=today();
+  if(activeFilter==='leo')return all.filter(function(r){return String(r.Tarehe)===t;});
+  if(activeFilter==='wiki'){var d=new Date(),mon=new Date();mon.setDate(d.getDate()-((d.getDay()+6)%7));var ms=mon.toISOString().split('T')[0];return all.filter(function(r){var dd=String(r.Tarehe);return dd>=ms&&dd<=t;});}
+  if(activeFilter==='mwezi'){var px=t.slice(0,7);return all.filter(function(r){return String(r.Tarehe).startsWith(px);});}
+  return all;
+}
+function setF(f,el){activeFilter=f;document.querySelectorAll('#page-dash .btn-o').forEach(function(b){b.classList.remove('fa');});el.classList.add('fa');renderDash();}
+
+function renderDash(){
+  var recs=getRecs(),N=function(v){return Number(v||0);};
+  var gM=recs.reduce(function(s,r){return s+N(r.Mauzo);},0);
+  var gG=recs.reduce(function(s,r){return s+N(r.Gharama);},0);
+  var gW=recs.reduce(function(s,r){return s+N(r.Wateja);},0);
+  var bizM=BIZ.map(function(b){return{b:b,m:recs.filter(function(r){return String(r.Biashara)===b;}).reduce(function(s,r){return s+N(r.Mauzo);},0)};});
+  var best=bizM.slice().sort(function(a,x){return x.m-a.m;})[0];
+  var dm=document.getElementById('d-met');
+  if(dm)dm.innerHTML='<div class="mc"><div class="ml">Jumla Mauzo</div><div class="mv">'+fmt(gM)+'</div></div>'
+    +'<div class="mc"><div class="ml">Jumla Gharama</div><div class="mv">'+fmt(gG)+'</div></div>'
+    +'<div class="mc"><div class="ml">Faida Halisi</div><div class="mv" style="color:'+(gM-gG>=0?'var(--green-d)':'var(--red)')+'">'+fmt(gM-gG)+'</div></div>'
+    +'<div class="mc"><div class="ml">Wateja</div><div class="mv">'+gW.toLocaleString()+'</div></div>'
+    +'<div class="mc"><div class="ml">Biashara Bora</div><div class="mv" style="font-size:1rem;">'+(IC[best&&best.b]||'')+' '+(best?best.b:'—')+'</div><div class="ms">'+fmt(best?best.m:0)+'</div></div>'
+    +'<div class="mc"><div class="ml">Rekodi</div><div class="mv">'+recs.length+'</div></div>';
+  var goals=C.malengo||{};
+  var db=document.getElementById('d-biz');
+  if(db)db.innerHTML=bizM.map(function(x){
+    var goal=Number(goals[x.b])||500000,pct=Math.min(100,Math.round((x.m/goal)*100));
+    var st=pct>=70?'pill-g':pct>=40?'pill-a':'pill-r',lbl=pct>=70?'Nzuri':pct>=40?'Wastani':'Chini';
+    return'<div class="biz-card"><div class="biz-top"><div class="biz-icon" style="background:'+CL[x.b]+'22;">'+(IC[x.b]||'')+'</div><span class="pill '+st+'">'+lbl+'</span></div>'
+      +'<div style="font-size:13px;font-weight:600;margin-bottom:3px;">'+x.b+'</div>'
+      +'<div style="font-size:1.2rem;font-weight:600;margin-bottom:2px;">'+fmt(x.m)+'</div>'
+      +'<div style="font-size:12px;color:var(--text2);margin-bottom:7px;">Lengo: '+fmt(goal)+' • '+pct+'%</div>'
+      +'<div class="prog-track"><div class="prog-fill" style="width:'+pct+'%;background:'+CL[x.b]+';"></div></div></div>';
+  }).join('');
+  var maxM=Math.max.apply(null,bizM.map(function(x){return x.m;}).concat([1]));
+  var dbar=document.getElementById('d-bar');
+  if(dbar)dbar.innerHTML=bizM.map(function(x){
+    var h=Math.max(4,Math.round((x.m/maxM)*100));
+    var s=x.m>=1e6?(x.m/1e6).toFixed(1)+'M':x.m>=1000?Math.round(x.m/1000)+'K':x.m||'';
+    return'<div class="bar-col"><div class="bar-amt">'+s+'</div><div class="bar-b" style="height:'+h+'px;background:'+CL[x.b]+';"></div></div>';
+  }).join('');
+  var dlbl=document.getElementById('d-lbl');
+  if(dlbl)dlbl.innerHTML=bizM.map(function(x){return'<div class="bar-l">'+(IC[x.b]||'')+'<br>'+x.b.slice(0,5)+'</div>';}).join('');
+  var t2=today();
+  var sA=C.bidhaa.filter(function(b){return Number(b.Idadi||0)<=Number(b.Kiwango||5);})
+    .map(function(b){return'<div class="alert alert-r"><span>⚠</span><span>'+(b.Jina||'')+' ('+(b.Biashara||'')+') — Idadi: '+(b.Idadi||0)+'</span></div>';});
+  var mkA=C.mkopo.filter(function(m){return String(m.Malipo||'')<t2&&String(m.Malipo||'')&&String(m.Hali)!=='Amelipa';})
+    .map(function(m){return'<div class="alert alert-r"><span>💳</span><span>'+(m.Mteja||'')+' — Baki: '+fmt(Number(m.Kiasi||0)-Number(m.Alipolipa||0))+'</span></div>';});
+  var lA=bizM.filter(function(x){return(x.m/(Number(goals[x.b])||500000))<0.3&&recs.length>0;})
+    .map(function(x){return'<div class="alert alert-a"><span>↓</span><span>'+x.b+': Chini ya 30% ya lengo</span></div>';});
+  var dal=document.getElementById('d-alerts');
+  if(dal)dal.innerHTML=[].concat(sA,mkA,lA).join('')||'<div class="alert alert-g"><span>✓</span><span>Vizuri! Hakuna arifa za haraka.</span></div>';
+}
+
+// ============================================================
+//  RIPOTI
+// ============================================================
+function renderRipoti(){
+  var from=document.getElementById('rp-from').value,to=document.getElementById('rp-to').value;
+  if(!from||!to){alert('Weka tarehe.');return;}
+  var N=function(v){return Number(v||0);};
+  var recs=C.rekodi.filter(function(r){var d=String(r.Tarehe||'');return d>=from&&d<=to;});
+  var out=document.getElementById('rp-out');
+  if(!recs.length){out.innerHTML='<div class="alert alert-a"><span>ℹ</span><span>Hakuna rekodi katika kipindi hicho.</span></div>';return;}
+  var gM=recs.reduce(function(s,r){return s+N(r.Mauzo);},0),gG=recs.reduce(function(s,r){return s+N(r.Gharama);},0);
+  var bizR=BIZ.map(function(b){var br=recs.filter(function(r){return String(r.Biashara)===b;});var m=br.reduce(function(s,r){return s+N(r.Mauzo);},0),g=br.reduce(function(s,r){return s+N(r.Gharama);},0);return{b:b,m:m,g:g,f:m-g,w:br.reduce(function(s,r){return s+N(r.Wateja);},0),count:br.length};});
+  out.innerHTML='<div class="mg" style="margin-bottom:1.4rem;">'
+    +'<div class="mc"><div class="ml">Jumla Mauzo</div><div class="mv">'+fmt(gM)+'</div></div>'
+    +'<div class="mc"><div class="ml">Jumla Gharama</div><div class="mv">'+fmt(gG)+'</div></div>'
+    +'<div class="mc"><div class="ml">Faida Halisi</div><div class="mv" style="color:'+(gM-gG>=0?'var(--green-d)':'var(--red)')+'">'+fmt(gM-gG)+'</div></div>'
+    +'<div class="mc"><div class="ml">Rekodi</div><div class="mv">'+recs.length+'</div></div></div>'
+    +'<div class="tw"><div class="ts"><table><thead><tr><th>Biashara</th><th>Mauzo</th><th>Gharama</th><th>Faida</th><th>Wateja</th><th>Siku</th></tr></thead>'
+    +'<tbody>'+bizR.map(function(r){return'<tr><td>'+(IC[r.b]||'')+' <strong>'+r.b+'</strong></td><td>'+fmt(r.m)+'</td><td>'+fmt(r.g)+'</td><td style="font-weight:600;color:'+(r.f>=0?'var(--green-d)':'var(--red)')+'">'+fmt(r.f)+'</td><td>'+r.w+'</td><td>'+r.count+'</td></tr>';}).join('')
+    +'</tbody></table></div></div>';
+}
+
+// ============================================================
+//  MALENGO
+// ============================================================
+function saveGoal(){
+  var biz=document.getElementById('m-biz').value,lengo=parseFloat(document.getElementById('m-lengo').value);
+  if(!biz||!lengo){alert('Jaza biashara na lengo.');return;}
+  setBtn('m-btn',true);sync('busy','Inahifadhi...');
+  sheetsAppend('Malengo',[biz,lengo]).then(function(){
+    C.malengo[biz]=lengo;saveLocalCache();renderMalengo();
+    document.getElementById('m-lengo').value='';
+    setMsg('m-msg','✓ Imehifadhiwa!');sync('','Imehifadhiwa');
+  }).catch(function(e){sync('err','Hitilafu!');alert('Hitilafu: '+e.message);})
+  .finally(function(){setBtn('m-btn',false);});
+}
+
+function renderMalengo(){
+  var goals=C.malengo||{},px=today().slice(0,7);
+  var mwezi=C.rekodi.filter(function(r){return String(r.Tarehe||'').startsWith(px);});
+  var ml=document.getElementById('m-list');if(!ml)return;
+  ml.innerHTML=BIZ.map(function(b){
+    var goal=Number(goals[b])||0,curr=mwezi.filter(function(r){return String(r.Biashara)===b;}).reduce(function(s,r){return s+Number(r.Mauzo||0);},0);
+    var pct=goal?Math.min(100,Math.round((curr/goal)*100)):0;
+    return'<div class="gr"><div class="gi">'+(IC[b]||'')+'</div>'
+      +'<div class="ginfo"><div class="gname">'+b+'</div><div class="gnums">'+fmt(curr)+' / '+(goal?fmt(goal):'Haijawekwa')+'</div>'
+      +'<div class="prog-track" style="margin-top:6px;"><div class="prog-fill" style="width:'+pct+'%;background:'+CL[b]+';"></div></div></div>'
+      +'<div class="gpct" style="color:'+(pct>=70?'var(--green-d)':pct>=40?'var(--amber-d)':'var(--red)')+'">'+pct+'%</div></div>';
+  }).join('');
+}
+
+// ============================================================
+//  SETTINGS
+// ============================================================
+function savePwd(){
+  var op=document.getElementById('s-owner').value,sp=document.getElementById('s-staff').value;
+  if(!op&&!sp){alert('Weka nywila angalau moja.');return;}
+  sync('busy','Inahifadhi...');
+  var promises=[];
+  if(op){promises.push(sheetsAppend('Settings',['owner_pass',op]));}
+  if(sp){promises.push(sheetsAppend('Settings',['staff_pass',sp]));}
+  Promise.all(promises).then(function(){
+    if(op)C.passwords.owner=op;if(sp)C.passwords.staff=sp;
+    saveLocalCache();
+    ['s-owner','s-staff'].forEach(function(id){document.getElementById(id).value='';});
+    setMsg('s-msg','✓ Zimehifadhiwa!');sync('','Imehifadhiwa');
+  }).catch(function(e){sync('err','Hitilafu!');alert('Hitilafu: '+e.message);});
+}
+
+function clearAll(){
+  if(!confirm('Una uhakika? Data ZOTE itafutwa!'))return;
+  if(!confirm('Bonyeza OK tena kuthibitisha.'))return;
+  alert('Ili kufuta data yote, nenda Google Sheets moja kwa moja na ufute rows. Hii inakuepusha kufuta kwa bahati mbaya.');
+}
+
+// ============================================================
+//  NOTIFICATIONS
+// ============================================================
+function checkNotifs(){
+  if(!currentUser||currentUser.role!=='owner')return;
+  var notifs=[],t=today();
+  C.bidhaa.forEach(function(b){if(Number(b.Idadi||0)<=Number(b.Kiwango||5))notifs.push('🟡 Stok: '+(b.Jina||'')+' — Idadi: '+(b.Idadi||0));});
+  C.mkopo.forEach(function(m){var due=String(m.Malipo||'');if(due&&due<t&&String(m.Hali)!=='Amelipa')notifs.push('🔴 Mkopo: '+(m.Mteja||'')+' — Baki: '+fmt(Number(m.Kiasi||0)-Number(m.Alipolipa||0)));});
+  var leo=C.rekodi.filter(function(r){return String(r.Tarehe)===t;});
+  if(leo.length>0)notifs.push('🔵 Mauzo ya leo: '+fmt(leo.reduce(function(s,r){return s+Number(r.Mauzo||0);},0))+' ('+leo.length+' rekodi)');
+  var bell=document.getElementById('nbell'),cnt=document.getElementById('ncnt');
+  if(bell){bell.style.display='flex';bell._n=notifs;var w=notifs.filter(function(n){return n[0]==='🟡'||n[0]==='🔴';}).length;cnt.textContent=w||'';cnt.style.display=w?'flex':'none';}
+}
+function showNotifs(){var bell=document.getElementById('nbell');var n=bell&&bell._n?bell._n:[];alert(n.length?'ARIFA — DEEPACK\n\n'+n.join('\n\n'):'Hakuna arifa kwa sasa.');}
+
+// ============================================================
+//  BOOT
+// ============================================================
+init();
+</script>
+</body>
+</html>
