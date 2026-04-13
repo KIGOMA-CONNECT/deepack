@@ -150,6 +150,9 @@ tr:hover td{background:var(--bg);}
       <strong>Mmiliki:</strong> Nywila ya awali = <code>mmiliki123</code><br>
       <strong>Mfanyakazi:</strong> Nywila ya awali = <code>kazi2024</code>
     </div>
+    <div style="text-align:center;margin-top:10px;">
+      <button onclick="showResetModal()" style="background:none;border:none;color:var(--text3);font-size:12px;cursor:pointer;text-decoration:underline;font-family:'DM Sans',sans-serif;">Umesahau nywila?</button>
+    </div>
     <div id="login-err"></div>
   </div>
 </div>
@@ -328,6 +331,24 @@ tr:hover td{background:var(--bg);}
   </main>
 </div>
 
+<!-- RESET MODAL -->
+<div id="reset-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9999;align-items:center;justify-content:center;padding:1rem;">
+  <div style="background:var(--surface);border-radius:var(--radius-lg);padding:2rem;width:100%;max-width:380px;box-shadow:var(--shadow-lg);">
+    <h2 style="font-family:'DM Serif Display',serif;font-size:1.3rem;margin-bottom:0.5rem;">Reset Nywila</h2>
+    <p style="font-size:13px;color:var(--text2);margin-bottom:1.25rem;">Weka nywila ya sasa (ya zamani) kisha weka mpya.</p>
+    <div id="reset-owner-section">
+      <div class="fg"><label>Nywila ya Sasa (Mmiliki)</label><input type="password" id="reset-current" placeholder="Nywila ya sasa..."/></div>
+      <div class="fg"><label>Nywila Mpya ya Mmiliki</label><input type="password" id="reset-new-owner" placeholder="Nywila mpya..."/></div>
+      <div class="fg"><label>Nywila Mpya ya Mfanyakazi</label><input type="password" id="reset-new-staff" placeholder="Nywila mpya ya mfanyakazi..."/></div>
+    </div>
+    <div id="reset-err" style="font-size:13px;color:var(--red);margin-bottom:10px;display:none;"></div>
+    <div style="display:flex;gap:10px;">
+      <button class="btn-p" onclick="doReset()" style="flex:1;">Badilisha Nywila</button>
+      <button class="btn-o" onclick="closeResetModal()">Ghairi</button>
+    </div>
+  </div>
+</div>
+
 <script>
 'use strict';
 // ============================================================
@@ -407,13 +428,27 @@ function sheetsGet(range){
 var GAS_URL = 'https://script.google.com/macros/s/AKfycbw5Ny0ANGxWb9BSOgJ4SHClfZLxBfFZ4cescP2hv5ABz1anXDLQydlDH-Zy_eDagL26/exec';
 
 function gasPost(body){
+  // Try with cors first, fallback to no-cors
   return fetch(GAS_URL, {
     method:'POST',
-    mode:'no-cors',
     headers:{'Content-Type':'text/plain'},
     body:JSON.stringify(body)
-  }).then(function(){
+  }).then(function(r){
+    return r.json();
+  }).then(function(d){
+    if(d && d.ok===false) throw new Error(d.error||'Hitilafu ya seva');
     return {ok:true};
+  }).catch(function(e){
+    // If cors blocked, try no-cors (data saves but no confirmation)
+    if(e.message && (e.message.indexOf('Failed to fetch')>=0 || e.message.indexOf('NetworkError')>=0 || e.message.indexOf('CORS')>=0)){
+      return fetch(GAS_URL, {
+        method:'POST',
+        mode:'no-cors',
+        headers:{'Content-Type':'text/plain'},
+        body:JSON.stringify(body)
+      }).then(function(){ return {ok:true}; });
+    }
+    throw e;
   });
 }
 
@@ -641,7 +676,7 @@ function saveRekodi(){
   if(!mauzo){alert('Weka kiasi cha mauzo.');return;}
   var id=String(Date.now());
   setBtn('r-btn',true);sync('busy','Inahifadhi...');
-  sheetsAppend('Rekodi',[id,date,biz,mauzo,gharama,wateja,bidhaa,notes,currentUser.name,new Date().toISOString()])
+  gasPost({action:'addRekodi',data:{id:id,tarehe:date,biashara:biz,mauzo:mauzo,gharama:gharama,wateja:wateja,bidhaa:bidhaa,maelezo:notes,mtumiaji:currentUser.name}})
   .then(function(){
     C.rekodi.unshift({ID:id,Tarehe:date,Biashara:biz,Mauzo:mauzo,Gharama:gharama,Wateja:wateja,Bidhaa:bidhaa,Maelezo:notes,Mtumiaji:currentUser.name});
     saveLocalCache();renderRekodi();
@@ -680,7 +715,7 @@ function saveBidhaa(){
   C.bidhaa.forEach(function(b,i){if(String(b.Biashara)===biz&&String(b.Jina||'').toLowerCase()===jina.toLowerCase())existIdx=i;});
   var row=[biz,jina,idadi,kiwango,bei,today(),currentUser.name];
   var item={Biashara:biz,Jina:jina,Idadi:idadi,Kiwango:kiwango,Bei:bei,IliSasishwa:today()};
-  sheetsAppend('Bidhaa',row).then(function(){
+  gasPost({action:'saveBidhaa',data:{biashara:biz,jina:jina,idadi:idadi,kiwango:kiwango,bei:bei,tarehe:today(),mtumiaji:currentUser.name}}).then(function(){
     if(existIdx>=0)C.bidhaa[existIdx]=item;else C.bidhaa.unshift(item);
     saveLocalCache();renderBidhaa();
     ['b-biz','b-jina','b-idadi','b-bei'].forEach(function(i){document.getElementById(i).value='';});
@@ -717,7 +752,7 @@ function saveMkopo(){
   if(!kiasi){alert('Weka kiasi cha mkopo.');return;}
   var id=String(Date.now());
   setBtn('mk-btn',true);sync('busy','Inahifadhi...');
-  sheetsAppend('Mkopo',[id,biz,mteja,kiasi,0,tarehe||today(),due||'',simu,notes,'Hajalipa',currentUser.name,new Date().toISOString()])
+  gasPost({action:'addMkopo',data:{id:id,biz:biz,mteja:mteja,kiasi:kiasi,tarehe:tarehe||today(),due:due||'',simu:simu,notes:notes,mtumiaji:currentUser.name}})
   .then(function(){
     C.mkopo.unshift({ID:id,Biashara:biz,Mteja:mteja,Kiasi:kiasi,Alipolipa:0,Tarehe:tarehe||today(),Malipo:due||'',Simu:simu,Hali:'Hajalipa',Maelezo:notes,Mtumiaji:currentUser.name});
     saveLocalCache();renderMkopo();
@@ -738,13 +773,7 @@ function lipaMkopo(id){
   var total=Number(mk.Kiasi||0);
   var hali=alip>=total?'Amelipa':'Amelipa Sehemu';
   sync('busy','Inahifadhi...');
-  // Find row in sheet and update
-  sheetsGet('Mkopo!A:A').then(function(rows){
-    var rowNum=-1;
-    rows.forEach(function(row,i){if(i>0&&row[0]===String(id))rowNum=i+1;});
-    if(rowNum<0)throw new Error('Row haikupatikana');
-    return sheetsUpdate('Mkopo!E'+rowNum+':I'+rowNum,[[alip,'','','',hali]]);
-  }).then(function(){
+  gasPost({action:'lipaMkopo',data:{id:id,alipolipa:alip,hali:hali}}).then(function(){
     if(mkIdx>=0){C.mkopo[mkIdx].Alipolipa=alip;C.mkopo[mkIdx].Hali=hali;}
     saveLocalCache();renderMkopo();sync('','Imehifadhiwa');
     setMsg('mk-msg','✓ Malipo yamehifadhiwa!');
@@ -873,7 +902,7 @@ function saveGoal(){
   var biz=document.getElementById('m-biz').value,lengo=parseFloat(document.getElementById('m-lengo').value);
   if(!biz||!lengo){alert('Jaza biashara na lengo.');return;}
   setBtn('m-btn',true);sync('busy','Inahifadhi...');
-  sheetsAppend('Malengo',[biz,lengo]).then(function(){
+  gasPost({action:'saveGoal',biashara:biz,lengo:lengo}).then(function(){
     C.malengo[biz]=lengo;saveLocalCache();renderMalengo();
     document.getElementById('m-lengo').value='';
     setMsg('m-msg','✓ Imehifadhiwa!');sync('','Imehifadhiwa');
@@ -902,15 +931,41 @@ function savePwd(){
   var op=document.getElementById('s-owner').value,sp=document.getElementById('s-staff').value;
   if(!op&&!sp){alert('Weka nywila angalau moja.');return;}
   sync('busy','Inahifadhi...');
-  var promises=[];
-  if(op){promises.push(sheetsAppend('Settings',['owner_pass',op]));}
-  if(sp){promises.push(sheetsAppend('Settings',['staff_pass',sp]));}
-  Promise.all(promises).then(function(){
+  gasPost({action:'savePasswords',owner:op||undefined,staff:sp||undefined}).then(function(){
     if(op)C.passwords.owner=op;if(sp)C.passwords.staff=sp;
     saveLocalCache();
     ['s-owner','s-staff'].forEach(function(id){document.getElementById(id).value='';});
     setMsg('s-msg','✓ Zimehifadhiwa!');sync('','Imehifadhiwa');
   }).catch(function(e){sync('err','Hitilafu!');alert('Hitilafu: '+e.message);});
+}
+
+// RESET PASSWORD FUNCTIONS
+function showResetModal(){
+  document.getElementById('reset-modal').style.display='flex';
+  document.getElementById('reset-err').style.display='none';
+  ['reset-current','reset-new-owner','reset-new-staff'].forEach(function(id){document.getElementById(id).value='';});
+}
+function closeResetModal(){
+  document.getElementById('reset-modal').style.display='none';
+}
+function doReset(){
+  var current=document.getElementById('reset-current').value;
+  var newOwner=document.getElementById('reset-new-owner').value;
+  var newStaff=document.getElementById('reset-new-staff').value;
+  var errEl=document.getElementById('reset-err');
+  errEl.style.display='none';
+  if(!current){errEl.textContent='Weka nywila ya sasa.';errEl.style.display='block';return;}
+  if(current!==C.passwords.owner){errEl.textContent='Nywila ya sasa si sahihi.';errEl.style.display='block';return;}
+  if(!newOwner&&!newStaff){errEl.textContent='Weka nywila mpya angalau moja.';errEl.style.display='block';return;}
+  gasPost({action:'savePasswords',owner:newOwner||undefined,staff:newStaff||undefined}).then(function(){
+    if(newOwner)C.passwords.owner=newOwner;
+    if(newStaff)C.passwords.staff=newStaff;
+    saveLocalCache();
+    closeResetModal();
+    alert('✓ Nywila zimebadilishwa! Tafadhali ikumbuke nywila yako mpya.');
+  }).catch(function(e){
+    errEl.textContent='Hitilafu: '+e.message;errEl.style.display='block';
+  });
 }
 
 function clearAll(){
