@@ -403,26 +403,26 @@ function sheetsGet(range){
     });
 }
 
-function sheetsAppend(sheetName, row){
-  return fetch(BASE+'/values/'+encodeURIComponent(sheetName+'!A1')+':append?valueInputOption=RAW&insertDataOption=INSERT_ROWS&key='+API_KEY,{
+// WRITES -> Apps Script | READS -> Sheets API moja kwa moja
+var GAS_URL = 'https://script.google.com/macros/s/AKfycbw5Ny0ANGxWb9BSOgJ4SHClfZLxBfFZ4cescP2hv5ABz1anXDLQydlDH-Zy_eDagL26/exec';
+
+function gasPost(body){
+  return fetch(GAS_URL, {
     method:'POST',
-    headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({values:[row]})
-  }).then(function(r){return r.json();}).then(function(d){
-    if(d.error)throw new Error(d.error.message);
-    return d;
+    mode:'no-cors',
+    headers:{'Content-Type':'text/plain'},
+    body:JSON.stringify(body)
+  }).then(function(){
+    return {ok:true};
   });
 }
 
+function sheetsAppend(sheetName, row){
+  return gasPost({action:'append', sheet:sheetName, row:row});
+}
+
 function sheetsUpdate(range, values){
-  return fetch(BASE+'/values/'+encodeURIComponent(range)+'?valueInputOption=RAW&key='+API_KEY,{
-    method:'PUT',
-    headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({values:values})
-  }).then(function(r){return r.json();}).then(function(d){
-    if(d.error)throw new Error(d.error.message);
-    return d;
-  });
+  return gasPost({action:'update', range:range, values:values});
 }
 
 function sheetsGetAll(){
