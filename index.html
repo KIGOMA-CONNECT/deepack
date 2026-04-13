@@ -424,31 +424,59 @@ function sheetsGet(range){
     });
 }
 
-// WRITES -> Apps Script | READS -> Sheets API moja kwa moja
-var GAS_URL = 'https://script.google.com/macros/s/AKfycbw5Ny0ANGxWb9BSOgJ4SHClfZLxBfFZ4cescP2hv5ABz1anXDLQydlDH-Zy_eDagL26/exec';
-
+// ============================================================
+//  SERVER CALLS — google.script.run (runs inside Google)
+//  Hakuna CORS, hakuna timeout, inafanya kazi 100%
+// ============================================================
 function gasPost(body){
-  // Try with cors first, fallback to no-cors
-  return fetch(GAS_URL, {
-    method:'POST',
-    headers:{'Content-Type':'text/plain'},
-    body:JSON.stringify(body)
-  }).then(function(r){
-    return r.json();
-  }).then(function(d){
-    if(d && d.ok===false) throw new Error(d.error||'Hitilafu ya seva');
-    return {ok:true};
-  }).catch(function(e){
-    // If cors blocked, try no-cors (data saves but no confirmation)
-    if(e.message && (e.message.indexOf('Failed to fetch')>=0 || e.message.indexOf('NetworkError')>=0 || e.message.indexOf('CORS')>=0)){
-      return fetch(GAS_URL, {
-        method:'POST',
-        mode:'no-cors',
-        headers:{'Content-Type':'text/plain'},
-        body:JSON.stringify(body)
-      }).then(function(){ return {ok:true}; });
+  return new Promise(function(resolve, reject){
+    var attempts = 0;
+    function attempt(){
+      attempts++;
+      var timer = setTimeout(function(){
+        if(attempts < 3) attempt();
+        else reject(new Error('Seva imechukua muda mrefu. Angalia mtandao.'));
+      }, 30000);
+      google.script.run
+        .withSuccessHandler(function(r){
+          clearTimeout(timer);
+          if(r && r.ok === false) reject(new Error(r.error || 'Hitilafu ya seva'));
+          else resolve({ok:true});
+        })
+        .withFailureHandler(function(e){
+          clearTimeout(timer);
+          if(attempts < 3) setTimeout(attempt, 2000);
+          else reject(new Error(e.message || 'Hitilafu'));
+        })
+        .postData(body);
     }
-    throw e;
+    attempt();
+  });
+}
+
+function sheetsGetAll(){
+  return new Promise(function(resolve, reject){
+    var attempts = 0;
+    function attempt(){
+      attempts++;
+      var timer = setTimeout(function(){
+        if(attempts < 3) attempt();
+        else reject(new Error('Seva imechukua muda mrefu.'));
+      }, 30000);
+      google.script.run
+        .withSuccessHandler(function(r){
+          clearTimeout(timer);
+          if(r && r.ok === false) reject(new Error(r.error || 'Hitilafu'));
+          else resolve(r.data);
+        })
+        .withFailureHandler(function(e){
+          clearTimeout(timer);
+          if(attempts < 3) setTimeout(attempt, 2000);
+          else reject(new Error(e.message || 'Hitilafu'));
+        })
+        .getData('getAll');
+    }
+    attempt();
   });
 }
 
@@ -484,17 +512,8 @@ function rowsToObjects(rows){
 //  ENSURE SHEETS EXIST
 // ============================================================
 function ensureSheets(){
-  // Check if Settings sheet has passwords, if not create via batch update
-  return sheetsGet('Settings!A:B').then(function(rows){
-    if(!rows||rows.length<=1){
-      // Sheet exists but empty — add headers and defaults
-      return sheetsUpdate('Settings!A1',
-        [['Key','Value'],['owner_pass','mmiliki123'],['staff_pass','kazi2024']]
-      );
-    }
-  }).catch(function(){
-    // Sheet might not exist — we'll handle gracefully
-  });
+  // With google.script.run, sheets are created automatically on server side
+  return Promise.resolve();
 }
 
 // ============================================================
@@ -545,25 +564,20 @@ function init(){
 // ============================================================
 function loadAll(showMsg){
   if(showMsg)sync('busy','Inapakia...');
-  return sheetsGetAll().then(function(ranges){
-    var rekodi=rowsToObjects(ranges[0]&&ranges[0].values);
-    var bidhaa=rowsToObjects(ranges[1]&&ranges[1].values);
-    var malengoRows=rowsToObjects(ranges[2]&&ranges[2].values);
-    var mkopo=rowsToObjects(ranges[3]&&ranges[3].values);
-    var settingsRows=rowsToObjects(ranges[4]&&ranges[4].values);
+  return sheetsGetAll().then(function(data){
+    if(!data) return;
+    // Only update cache if server returned real data
+    if(data.rekodi && data.rekodi.length>0) C.rekodi=data.rekodi;
+    else if(data.rekodi && C.rekodi.length===0) C.rekodi=data.rekodi;
 
-    // Only update if server returned data
-    if(rekodi.length>0||C.rekodi.length===0) C.rekodi=rekodi.reverse();
-    if(bidhaa.length>0||C.bidhaa.length===0) C.bidhaa=bidhaa;
-    if(mkopo.length>0||C.mkopo.length===0) C.mkopo=mkopo.reverse();
+    if(data.bidhaa && data.bidhaa.length>0) C.bidhaa=data.bidhaa;
+    else if(data.bidhaa && C.bidhaa.length===0) C.bidhaa=data.bidhaa;
 
-    var mal={};
-    malengoRows.forEach(function(r){if(r.Biashara)mal[r.Biashara]=Number(r.Lengo||0);});
-    if(Object.keys(mal).length>0||Object.keys(C.malengo).length===0) C.malengo=mal;
+    if(data.mkopo && data.mkopo.length>0) C.mkopo=data.mkopo;
+    else if(data.mkopo && C.mkopo.length===0) C.mkopo=data.mkopo;
 
-    var pwd={owner:'mmiliki123',staff:'kazi2024'};
-    settingsRows.forEach(function(r){if(r.Key==='owner_pass')pwd.owner=r.Value;if(r.Key==='staff_pass')pwd.staff=r.Value;});
-    C.passwords=pwd;
+    if(data.malengo && Object.keys(data.malengo).length>0) C.malengo=data.malengo;
+    if(data.passwords) C.passwords=data.passwords;
 
     saveLocalCache();
     if(showMsg)sync('','Imesasishwa ✓');
@@ -572,7 +586,7 @@ function loadAll(showMsg){
   }).catch(function(e){
     sync('err','Hitilafu ya mtandao');
     console.error('loadAll error:',e.message);
-    // Keep existing cache — never clear
+    // NEVER clear cache on error
     throw e;
   });
 }
